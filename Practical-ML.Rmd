@@ -1,0 +1,100 @@
+---
+title: "Practical Machine Learning Project"
+author: "Pranav Shetty"
+date: "12 October 2020"
+output:
+  html_document: default
+---
+
+## Overview
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit, it is now possible to collect a large amount of
+data about personal activity relatively inexpensively. The aim of this project is to predict the manner in which
+participants perform a barbell lift. The data comes from http://groupware.les.inf.puc-rio.br/har wherein 6
+participants were asked to perform the same set of exercises correctly and incorrectly with accelerometers
+placed on the belt, forearm, arm, and dumbell.
+
+## Data
+
+Training data: 
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv 
+
+Test data: 
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
+
+
+## Load Packages for analysis
+```{r packages}
+library(caret)
+library(ggplot2)
+library(rpart)
+library(corrplot)
+library(rpart.plot)
+library(randomForest)
+library(rattle)
+set.seed(12000)
+```
+
+
+## Data Loading and Partioning 
+```{r loading and partioning}
+train1 <- read.csv(url("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"))
+test1 <- read.csv(url("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"))
+label1 <- createDataPartition(train1$classe, p = 0.7, list = FALSE)
+train2 <- train1[label1, ]
+test2 <- train1[-label1, ]
+```
+## Data Cleaning
+```{r cleaning}
+NV <- nearZeroVar(train2)
+train2 <- train2[ ,-NV]
+test2 <- test2[ ,-NV]
+label1 <- apply(train2, 2, function(x) mean(is.na(x))) > 0.95
+train2 <- train2[, -which(label1, label1 == FALSE)]
+test2 <- test2[, -which(label1, label1 == FALSE)]
+train2 <- train2[ , -(1:5)]
+test2 <- test2[ , -(1:5)]
+dim(train2)
+dim(test2)
+```
+## Exploratory Analysis
+```{r Exploratory analysis}
+cm1 <- cor(train2[,-54])
+corrplot(cm1, method = "color", type = "lower", tl.cex = 0.8, tl.col = rgb(0,0,0))
+```
+In the plot above, darker gradient correspond to having high correlation. A Principal Component Analysis can
+be run to further reduce the correlated variables but we aren’t doing that due to the number of correlations
+being quite few.
+
+## Modeling
+
+We will be using 3 types of models which are Decision tree, Random forest and generalized boosted model.
+
+## Decision tree
+```{r Decision tree}
+MDT1 <- rpart(classe ~ ., data = train2, method = "class")
+PDT1 <- predict(MDT1, test2, type = "class")
+CDT1 <- confusionMatrix(factor(PDT1),factor(test2$classe))
+CDT1
+```
+## Random Forest
+```{r random forest}
+C1 <- trainControl(method = "cv", number = 3, verboseIter=FALSE)
+MRF1 <- train(classe ~ ., data = train2, method = "rf", trControl = C1)
+PRF1 <- predict(MRF1, test2)
+CRF1 <- confusionMatrix(PRF1,as.factor(test2$classe))
+CRF1
+```
+Since accuracy of random forest is higher than accuracy of decision tree, we will be using Random forest for predicting the output.
+
+## Predicting the test o/p
+```{r predicting}
+PranF<-predict(MRF1,test1)
+PranF
+```
+      
+
+
+
+
